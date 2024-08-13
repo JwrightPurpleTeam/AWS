@@ -1,0 +1,76 @@
+import PyKCS11
+
+def wrap_key(hsm_label, key_label, wrapping_key_label, wrap_algorithm):
+    """
+    Wraps a key in the HSM using the specified wrapping key and algorithm.
+
+    Args:
+        hsm_label: The label of the HSM.
+        key_label: The label of the key to be wrapped.
+        wrapping_key_label: The label of the wrapping key.
+        wrap_algorithm: The wrapping algorithm to use.
+    """
+
+    lib = PyKCS11.lib()
+    slots = lib.get_slot_list()
+
+    # Find the slot for the HSM
+    hsm_slot = None
+    for slot in slots:
+        if lib.get_slot_info(slot)[PyKCS11.CKF_TOKEN_PRESENT] and lib.get_token_info(slot)[PyKCS11.CKA_LABEL] == hsm_label:
+            hsm_slot = slot
+            break
+
+    if not hsm_slot:
+        raise ValueError("HSM slot not found")
+
+    # Initialize session
+    session = lib.open_session(hsm_slot)
+    session.login()
+
+    # Find the key to be wrapped
+    key_object = find_key_by_label(session, key_label)
+    if not key_object:
+        raise ValueError("Key to be wrapped not found")
+
+    # Find the wrapping key
+    wrapping_key_object = find_key_by_label(session, wrapping_key_label)
+    if not wrapping_key_object:
+        raise ValueError("Wrapping key not found")
+
+    # Create a mechanism for the wrapping algorithm
+    mechanism = PyKCS11.Mechanism(wrap_algorithm)
+
+    # Call the c_wrapkey function
+    wrapped_key = session.c_wrap_key(mechanism, wrapping_key_object, key_object)
+
+    # Export the wrapped key (if needed)
+    # ...
+
+    session.logout()
+    lib.close_session(session)
+
+    return wrapped_key
+
+def find_key_by_label(session, key_label):
+    """
+    Finds a key object by its label in the session.
+
+    Args:
+        session: The PKCS#11 session.
+        key_label: The label of the key to find.
+    """
+
+    # Implement key search logic here, e.g., using CKA_LABEL attribute
+    # ...
+
+    return found_key
+
+# Example usage
+hsm_label = "my_hsm"
+key_label = "my_key"
+wrapping_key_label = "wrapping_key"
+wrap_algorithm = PyKCS11.CKM_RSA_PKCS_OAEP
+
+wrapped_key = wrap_key(hsm_label, key_label, wrapping_key_label, wrap_algorithm)
+print(wrapped_key)
